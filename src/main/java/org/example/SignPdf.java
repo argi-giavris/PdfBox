@@ -50,7 +50,7 @@ public class SignPdf {
         // For larger documents, consider adjusting the memory settings
         // signatureOptions.setPreferredSignatureSize(SignatureOptions.DEFAULT_SIGNATURE_SIZE);
 
-        document.addSignature(signature, new CreateSignature(privateKey, certChain), signatureOptions);
+        document.addSignature(signature, new CreateSignature(privateKey, certChain, "http://time.certum.pl/"), signatureOptions);
 
         try (FileOutputStream fos = new FileOutputStream(outputFile)) {
             document.saveIncremental(fos);

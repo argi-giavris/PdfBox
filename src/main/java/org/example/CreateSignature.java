@@ -1,37 +1,40 @@
 package org.example;
+
 import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureInterface;
-import org.apache.pdfbox.pdmodel.interactive.digitalsignature.SignatureOptions;
-import org.apache.pdfbox.pdmodel.interactive.digitalsignature.PDSignature;
 import org.bouncycastle.cert.jcajce.JcaCertStore;
-import org.bouncycastle.cms.CMSProcessableByteArray;
-import org.bouncycastle.cms.CMSSignedData;
-import org.bouncycastle.cms.CMSSignedDataGenerator;
-import org.bouncycastle.cms.CMSTypedData;
+import org.bouncycastle.cms.*;
 import org.bouncycastle.cms.jcajce.JcaSignerInfoGeneratorBuilder;
 import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.OperatorCreationException;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.operator.jcajce.JcaDigestCalculatorProviderBuilder;
 import org.bouncycastle.util.Store;
 
-
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.OutputStream;
-import java.security.*;
+import java.net.URISyntaxException;
+import java.security.GeneralSecurityException;
+import java.security.PrivateKey;
 import java.security.cert.Certificate;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.List;
 
 public class CreateSignature implements SignatureInterface{
 
     private final PrivateKey privateKey;
     private Certificate[] certificateChain;
+    private String tsaUrl;
 
-    CreateSignature(PrivateKey privateKey, X509Certificate certificateChain) {
+    CreateSignature(PrivateKey privateKey, X509Certificate certificateChain, String tsaUrl) {
         this.privateKey = privateKey;
         this.certificateChain = new X509Certificate[]{certificateChain};
+        this.tsaUrl = tsaUrl;
+    }
+
+    public void setTsaUrl(String tsaUrl)
+    {
+        this.tsaUrl = tsaUrl;
     }
 
     @Override
@@ -57,10 +60,16 @@ public class CreateSignature implements SignatureInterface{
             gen.addCertificates(certs);
 
             // Generate the CMS Signed Data
-            CMSSignedData sigData = gen.generate(msg, false);
+            CMSSignedData signedData = gen.generate(msg, false);
 
-            return sigData.getEncoded();
-        } catch (Exception e) {
+            if (tsaUrl != null && !tsaUrl.isEmpty())
+            {
+                ValidationTimeStamp validation = new ValidationTimeStamp(tsaUrl);
+                signedData = validation.addSignedTimeStamp(signedData);
+            }
+
+            return signedData.getEncoded();
+        } catch (GeneralSecurityException | CMSException | OperatorCreationException | URISyntaxException e) {
             throw new IOException(e);
         }
     }
